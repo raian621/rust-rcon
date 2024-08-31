@@ -125,6 +125,5 @@ mod tests {
         assert_eq!(packet.id, deserialized.id);
         assert_eq!(packet.packet_type, deserialized.packet_type);
         assert_eq!(packet.body, deserialized.body);
-        assert!(false);
     }
 }
