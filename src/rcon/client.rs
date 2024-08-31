@@ -5,7 +5,7 @@ use super::packet::{self, Packet};
 pub struct Client {
     password: String,
     hostname: String,
-    port: u32,
+    port: u16,
     command_id: i32,
     stream: Option<TcpStream>
 }
@@ -13,7 +13,7 @@ pub struct Client {
 pub struct ClientConfig {
     pub password: String,
     pub hostname: String,
-    pub port: u32
+    pub port: u16
 }
 
 #[derive(Debug)]
@@ -43,7 +43,11 @@ impl From<NoConnectionError> for ClientError {
 
 impl std::fmt::Display for ClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "client error: {}", self)
+        match self {
+            ClientError::NoConnectionError(err) => write!(f, "client error: {}", err),
+            ClientError::TcpError(err) => write!(f, "client error: {}", err),
+            ClientError::PacketError(err) => write!(f, "client error: {}", err),
+        }
     }
 }
 
@@ -57,21 +61,29 @@ impl std::fmt::Display for NoConnectionError {
 }
 
 impl Client {
-    pub fn connect(config: ClientConfig) -> std::io::Result<Self> {
-        Ok(Self{
-            stream: Some(
-                TcpStream::connect(
-                    format!("{}:{}", config.hostname, config.port)
-                )?
-            ),
-            password: config.password,
-            hostname: config.hostname,
-            port: config.port,
-            command_id: 0
-        })
+    // connect to an RCON game server
+    pub fn connect(hostname: String, port: u16, password: String) -> Result<Client, ClientError> {
+        let mut client = Self{
+            stream: None,
+            hostname,
+            password,
+            port,
+            command_id: 0,
+        };
+
+        // connect to RCON port on target server
+        client.stream = Some(TcpStream::connect(
+            format!("{}:{}", client.hostname, client.port)
+        )?);
+
+        // authenticate with the server using the RCON password
+        client.login()?;
+
+        Ok(client)
     }
 
-    pub fn login(mut self) -> Result<Self, ClientError> {
+    // authenticate with the RCON server using the RCON password
+    fn login(&mut self) -> Result<(), ClientError> {
         let login_packet = Packet::new_auth(self.command_id, self.password.clone());
         let data = login_packet.serialize()?;
         let response = self.send(&data)?;
@@ -81,19 +93,10 @@ impl Client {
         }
         self.command_id += 1;
 
-        Ok(self)
+        Ok(())
     }
 
-    pub fn new(hostname: &str, port: u32, password: &str) -> Self {
-        Self{ 
-            password: password.to_string(),
-            hostname: hostname.to_string(),
-            port,
-            command_id: 0,
-            stream: None
-        }
-    }
-
+    // send a command to the RCON server and return its response
     pub fn run(&mut self, command: &str) -> Result<String, ClientError> {
         if self.stream.is_none() {
             return Err(NoConnectionError{}.into());
@@ -116,11 +119,12 @@ impl Client {
         Ok(result_packet.body)
     }
 
+    // send binary data to the RCON game server and return its response
     fn send(&mut self, data: &[u8]) -> Result<Vec<u8>, ClientError> {
         if let Some(stream) = &mut self.stream {
             stream.write_all(data)?;
             let mut response = Vec::<u8>::new();
-            let mut buffer = [0 as u8; 128];
+            let mut buffer = [0_u8; 128];
             let mut n = buffer.len();
             while n == buffer.len() {
                 n = stream.read(&mut buffer)?;

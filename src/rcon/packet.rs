@@ -34,21 +34,21 @@ impl Packet {
             PacketType::ServerDataResponseValue => 0,
         };
 
-        let mut buffer = vec![0 as u8; size as usize + 4];
+        let mut buffer = vec![0_u8; size as usize + 4];
         
         // write the packet size into the buffer (little endian)
-        for i in 0..4 {
-            buffer[i] = (size >> i*8) as u8;
+        for (i, buf_byte) in buffer.iter_mut().enumerate().take(4) {
+            *buf_byte = (size >> (i*8)) as u8;
         }
 
         // write the packet id into the buffer
         for i in 0..4 {
-            buffer[i+4] = (self.id >> i*8) as u8;
+            buffer[i+4] = (self.id >> (i*8)) as u8;
         }
 
         // write the packet type into the buffer
         for i in 0..4 {
-            buffer[i+8] = (packet_type >> i*8) as u8;
+            buffer[i+8] = (packet_type >> (i*8)) as u8;
         }
 
         // write body into buffer
