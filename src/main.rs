@@ -1,6 +1,7 @@
 pub mod rcon;
 pub mod repl;
 pub mod util;
+pub mod history;
 
 use std::{env, process::exit};
 

@@ -62,3 +62,13 @@ pub fn eval_args(args: &[String]) -> Result<ClientConfig, Box<dyn Error>> {
         password: password.unwrap()
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_eval_args() {
+        
+    }
+}
