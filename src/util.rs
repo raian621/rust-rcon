@@ -65,7 +65,7 @@ pub fn eval_args(args: &[String]) -> Result<ClientConfig, Box<dyn Error>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    //use super::*;
 
     #[test]
     fn test_eval_args() {

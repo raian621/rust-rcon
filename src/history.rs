@@ -1,48 +1,57 @@
+use std::rc::Rc;
+
 pub struct History {
-    history: Vec<String>,
-    curr_pos: isize,
+    history: Vec<Rc<String>>,
+    index: isize
 }
 
 impl History {
+    pub fn iter(&self) -> core::slice::Iter<Rc<String>> {
+        self.history.iter()
+    }
+
     pub fn new() -> Self {
-        Self {
-            history: Vec::<String>::new(),
-            curr_pos: 0
-        }
+        Self { history: Vec::new(), index: 0 }
     }
 
-    pub fn next(&mut self) -> Option<&String> {
-        if self.curr_pos < self.history.len() as isize {
-            self.curr_pos += 1;
-            if self.curr_pos == self.history.len() as isize {
-                return None;
-            } else {
-                return Some(&self.history[self.curr_pos as usize]);
-            }
-        }
-
-        None
+    pub fn push(&mut self, cmd: String) {
+        self.history.push(Rc::new(cmd));
+        self.index = self.history.len() as isize;
     }
 
-    pub fn prev(&mut self) -> Option<&String> {
-        if self.curr_pos >= 0 {
-            self.curr_pos -= 1;
-            return match self.curr_pos {
+    pub fn prev(&mut self) -> Option<Rc<String>> {
+        if self.index >= 0 {
+            self.index -= 1;
+            return match self.index {
                 -1 => None,
-                idx => Some(&self.history[idx as usize])
+                idx => Some(self.history[idx as usize].clone())
             };
         }
 
         None
     }
+}
 
-    pub fn push(&mut self, cmd: String) {
-        self.history.push(cmd);
-        self.curr_pos = self.history.len() as isize;
+impl Default for History {
+    fn default() -> Self {
+        Self::new()
     }
+}
 
-    pub fn iter(&self) -> core::slice::Iter<'_, String> {
-        self.history.iter()
+impl Iterator for History {
+    type Item = Rc<String>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index < self.history.len() as isize {
+            self.index += 1;
+            if self.index == self.history.len() as isize {
+                return None;
+            } else {
+                return Some(self.history[self.index as usize].clone());
+            }
+        }
+
+        None
     }
 }
 
@@ -66,21 +75,21 @@ mod tests {
 
         let mut history_iter = history.iter();
         for input in inputs.iter() {
-            assert_eq!(input.to_string(), history_iter.next().unwrap().clone());
+            assert_eq!(input.to_string(), history_iter.next().unwrap().as_ref().clone());
         }
 
-        assert_eq!(history.prev().unwrap().clone(), inputs[2].to_string());
-        assert_eq!(history.prev().unwrap().clone(), inputs[1].to_string());
-        assert_eq!(history.prev().unwrap().clone(), inputs[0].to_string());
+        assert_eq!(history.prev().unwrap().as_ref().clone(), inputs[2].to_string());
+        assert_eq!(history.prev().unwrap().as_ref().clone(), inputs[1].to_string());
+        assert_eq!(history.prev().unwrap().as_ref().clone(), inputs[0].to_string());
         assert_eq!(history.prev(), None);
-        assert_eq!(history.next().unwrap().clone(), inputs[0].to_string());
-        assert_eq!(history.next().unwrap().clone(), inputs[1].to_string());
-        assert_eq!(history.next().unwrap().clone(), inputs[2].to_string());
+        assert_eq!(history.next().unwrap().as_ref().clone(), inputs[0].to_string());
+        assert_eq!(history.next().unwrap().as_ref().clone(), inputs[1].to_string());
+        assert_eq!(history.next().unwrap().as_ref().clone(), inputs[2].to_string());
         assert_eq!(history.next(), None);
 
-        history.curr_pos = -2;
+        history.index = -2;
         assert_eq!(history.prev(), None);
-        history.curr_pos = 5;
+        history.index = 5;
         assert_eq!(history.next(), None);
     }
 }

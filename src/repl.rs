@@ -6,6 +6,7 @@ use crate::history::History;
 
 const PROMPT: &str = "rcon> ";
 
+#[allow(dead_code)] // TODO: use all fields
 struct TerminalState {
     // cursor position on the terminal screen
     cur_pos_x: u16,
@@ -13,11 +14,11 @@ struct TerminalState {
 
     // current line, will probably be used to scroll through previous lines in
     // the terminal
-    curr_line: u16,
+    curr_line: usize,
 
     // position in the user input; characters will be inserted or deleted at
     // this position in the user input string
-    input_pos: u16,
+    input_pos: usize,
 
     // lines printed to the terminal; might be uesd to scroll through previous
     // lines in the terminal
@@ -71,7 +72,7 @@ pub fn repl(mut client: Client) {
                 ts.stdout.queue(cursor::MoveTo(0, ts.cur_pos_y)).unwrap();
                 ts.lines.push(response.clone());
                 if !response.is_empty() {
-                    ts.stdout.execute(style::Print(format!("{}", response))).unwrap();
+                    ts.stdout.execute(style::Print(response)).unwrap();
                     ts.cur_pos_y = cursor::position().unwrap().1 + 1;
                 }
             }
@@ -84,85 +85,73 @@ pub fn repl(mut client: Client) {
 fn repl_read(user_input: &mut String, ts: &mut TerminalState) -> ReadStatus {
     user_input.clear();
     ts.stdout.queue(cursor::MoveTo(0, ts.cur_pos_y)).unwrap();
-    ts.stdout.execute(style::Print(format!("{}", PROMPT))).unwrap();
-    
+    ts.stdout.execute(style::Print(PROMPT)).unwrap();
+
     loop {
-        ts.cur_pos_x = PROMPT.len() as u16 + ts.input_pos;
+        ts.cur_pos_x = (PROMPT.len() + ts.input_pos) as u16;
         ts.stdout.execute(cursor::MoveTo(ts.cur_pos_x, ts.cur_pos_y)).unwrap();
         let mut input_modified = false;
-        match event::read().unwrap() {
-            event::Event::Key(event) => {
-                match event.code {
-                    event::KeyCode::Enter => { 
-                        ts.cur_pos_y = cursor::position().unwrap().1 + 1;
-                        ts.input_pos = 0;
-                        break;
-                    },
-                    event::KeyCode::Esc => return ReadStatus::Exit,
-                    event::KeyCode::Char(c) => {
-                        user_input.insert(ts.input_pos as usize, c);
-                        ts.input_pos += 1;
+        if let event::Event::Key(event) = event::read().unwrap() {
+            match event.code {
+                event::KeyCode::Enter => { 
+                    ts.cur_pos_y = cursor::position().unwrap().1 + 1;
+                    ts.input_pos = 0;
+                    break;
+                },
+                event::KeyCode::Esc => return ReadStatus::Exit,
+                event::KeyCode::Char(c) => {
+                    user_input.insert(ts.input_pos, c);
+                    ts.input_pos += 1;
+                    input_modified = true;
+                },
+                event::KeyCode::Backspace => {
+                    if ts.input_pos > 0 {
+                        ts.input_pos -= 1;
+                        user_input.remove(ts.input_pos);
                         input_modified = true;
-                    },
-                    event::KeyCode::Backspace => {
-                        if ts.input_pos > 0 {
-                            ts.input_pos -= 1;
-                            user_input.remove(ts.input_pos as usize);
-                            input_modified = true;
-                        }
-                    },
-                    event::KeyCode::Delete => {
-                        if ts.input_pos < user_input.len() as u16 {
-                            user_input.remove(ts.input_pos as usize);
-                            input_modified = true;
-                        }
-                    },
-                    event::KeyCode::Left => {
-                        if ts.input_pos > 0 {
-                            ts.input_pos -= 1;
-                        }
-                    },
-                    event::KeyCode::Right => {
-                        if ts.input_pos < user_input.len() as u16 {
-                            ts.input_pos += 1;
-                        }
-                    },
-                    event::KeyCode::Up => {
-                        match ts.history.prev() {
-                            Some(cmd) => {
-                                *user_input = cmd.clone();
-                                input_modified = true;
-                            },
-                            None => ()
-                        };
-                    },
-                    event::KeyCode::Down => {
-                        match ts.history.next() {
-                            Some(cmd) => {
-                                *user_input = cmd.clone();
-                                input_modified = true;
-                            },
-                            None => ()
-                        };
-                    },
-                    _ => (),
-                }
-            },
-            event::Event::Mouse(event) => {
-                match event.kind {
-                    _ => ()
-                };
-            },
-            _ => ()
-        };
-        
+                    }
+                },
+                event::KeyCode::Delete => {
+                    if ts.input_pos < user_input.len() {
+                        user_input.remove(ts.input_pos);
+                        input_modified = true;
+                    }
+                },
+                event::KeyCode::Left => {
+                    if ts.input_pos > 0 {
+                        ts.input_pos -= 1;
+                    }
+                },
+                event::KeyCode::Right => {
+                    if ts.input_pos < user_input.len() {
+                        ts.input_pos += 1;
+                    }
+                },
+                event::KeyCode::Up => {
+                    if let Some(cmd) = ts.history.prev() {
+                        user_input.clone_from(cmd.as_ref());
+                        ts.input_pos = user_input.len();
+                        input_modified = true;
+                    }
+                },
+                event::KeyCode::Down => {
+                    if let Some(cmd) = ts.history.next() {
+                        user_input.clone_from(cmd.as_ref());
+                        ts.input_pos = user_input.len();
+                        input_modified = true;
+                    }
+                },
+                _ => (),
+            }
+        }
+
         if input_modified {
             ts.stdout.queue(terminal::Clear(terminal::ClearType::CurrentLine)).unwrap();
             ts.stdout.queue(cursor::MoveTo(0, ts.cur_pos_y)).unwrap();
             ts.stdout.queue(style::Print(format!("{}{}", PROMPT, user_input))).unwrap();
         }
     }
-    
+
     ReadStatus::Ok
 }
 
