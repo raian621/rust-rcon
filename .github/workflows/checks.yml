@@ -1,12 +1,12 @@
 on: 
-  push:
-    branches: [main]
-    paths: ['**/*.rs', '**/*.yml']
+push:
+  branches: [main]
+  paths: ['**/*.rs', '**/*.yml']
   pull_request:
     branches: [main]
     paths: ['**/*.rs', '**/*.yml']
 
-name: ci
+name: CI Checks
 
 jobs:
   check:
@@ -22,11 +22,6 @@ jobs:
           toolchain: stable
           override: true
 
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
-
       - name: Cargo and target cache
         uses: actions/cache@v2
         with:
@@ -35,6 +30,11 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
 
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov
