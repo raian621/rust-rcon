@@ -2,6 +2,7 @@ pub mod rcon;
 pub mod repl;
 pub mod util;
 pub mod history;
+pub mod scroller;
 
 use std::{env, process::exit};
 
