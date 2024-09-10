@@ -10,161 +10,170 @@ permissions:
 
 jobs:
   create-release:
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v4
-    - name: Get yarcon version from git tag
-      if: env.VERSION == ''
-      run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
-    - name: Check that tag version and Cargo.toml version are the same
-      shell: bash
-      run: |
-        if ! grep -q "version = \"$VERSION\"" Cargo.toml; then
-          echo "version does not match Cargo.toml" >&2
-          exit 1
-        fi
-    - name: Create GitHub release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: gh release create $VERSION --draft --verify-tag --title $VERSION
-  outputs:
-    version: ${{ env.VERSION }}
-
-  build:
-    name: Build project
-    needs:
-      - create-release
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - build: linux
-            os: ubuntu-latest
-            rust: nightly
-            target: x86_64-unknown-linux-musl
-            strip: x86_64-linux-musl-strip
-          - build: stable-x86
-            os: ubuntu-latest
-            rust: stable
-            target: i686-unknown-linux-gnu
-            strip: x86_64-linux-gnu-strip
-            qemu: i386
-          - build: stable-aarch64
-            os: ubuntu-latest
-            rust: stable
-            target: aarch64-unknown-linux-gnu
-            strip: aarch64-linux-gnu-strip
-            qemu: qemu-aarch64
-          - build: stable-arm-gnueabihf
-            os: ubuntu-latest
-            rust: stable
-            target: armv7-unknown-linux-gnueabihf
-            strip: arm-linux-gnueabihf-strip
-            qemu: qemu-arm
-          - build: stable-arm-musleabihf
-            os: ubuntu-latest
-            rust: stable
-            target: armv7-unknown-linux-musleabihf
-            strip: arm-linux-musleabihf-strip
-            qemu: qemu-arm
-          - build: stable-arm-musleabi
-            os: ubuntu-latest
-            rust: stable
-            target: armv7-unknown-linux-musleabi
-            strip: arm-linux-musleabi-strip
-            qemu: qemu-arm
-          - build: stable-powerpc64
-            os: ubuntu-latest
-            rust: stable
-            target: powerpc64-unknown-linux-gnu
-            strip: powerpc64-linux-gnu-strip
-            qemu: qemu-ppc64
-          - build: stable-s390x
-            os: ubuntu-latest
-            rust: stable
-            target: s390x-unknown-linux-gnu
-            strip: s390x-linux-gnu-strip
-            qemu: qemu-s390x
-          - build: macos
-            os: macos-latest
-            rust: nightly
-            target: x86_64-apple-darwin
-          - build: win-msvc
-            os: windows-latest
-            rust: nightly
-            target: x86_64-pc-windows-msvc
-          - build: win-gnu
-            os: windows-latest
-            rust: nightly-x86_64-gnu
-            target: x86_64-pc-windows-gnu
-          - build: win32-msvc
-            os: windows-latest
-            rust: nightly
-            target: i686-pc-windows-msvc
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          target: ${{ matrix.target }}
-
-      - name: Cargo and target cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Compile the project
+      - uses: actions/checkout@v4
+      - name: Get yarcon version from git tag
+        if: env.VERSION == ''
+        run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+      - name: Check that tag version and Cargo.toml version are the same
         shell: bash
         run: |
-          cargo build --release --target ${{ matrix.target }}
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            bin="target/${{ matrix.target }}/yarcon.exe"
-          else
-            bin="target/${{ matrix.target }}/yarcon"
+          if ! grep -q "version = \"$VERSION\"" Cargo.toml; then
+            echo "version does not match Cargo.toml" >&2
+            exit 1
           fi
-          echo "BIN=$bin" >> $GITHUB_ENV
-
-      - name: Set archive name
-        shell: bash
-        run: |
-          version=${{ needs.create-release.outputs.version }}
-          echo "ARCHIVE=yarcon-$version-${{ matrix.target }}" >> $GITHUB_ENV
-
-      - name: Create directory for archive
-        run:
-          mkdir -p $ARCHIVE/doc
-          cp $BIN $ARCHIVE
-          cp {README.md,LICENSE} $ARCHIVE/doc
-
-      - name: Build archive for Windows
-        shell: bash
-        if: matrix.os == 'windows-latest'
-        run: |
-          7z a "$ARCHIVE.zip" "$ARCHIVE"
-          certutil -hashfile "$ARCHIVE.zip" SHA256 > "$ARCHIVE.zip.sha256"
-          echo "ASSET=$ARCHIVE.zip" >> $GITHUB_ENV
-          echo "ASSET_SUM=$ARCHIVE.zip.sha256" >> $GITHUB_ENV
-
-      - name: Build archive for Unix systems
-        shell: bash
-        if: matrix.os != 'windows-latest'
-        run: |
-          tar -czvf $ARCHIVE.tar.gz $ARCHIVE
-          shasum -a 256 $ARCHIVE.tar.gz SHA256 > $ARCHIVE.tar.gz.sha256
-          echo "ASSET=$ARCHIVE.tar.gz" >> $GITHUB_ENV
-          echo "ASSET_SUM=$ARCHIVE.tar.gz.sha256" >> $GITHUB_ENV
-
-      - name: Upload release archive
-        shell: bash
-        run: |
-          version="${{ needs.create-release.outputs.version }}"
-          gh release upload "$version" ${{ env.ASSET }} ${{ env.ASSET_SUM }}
-
+      - name: Create GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create $VERSION --draft --verify-tag --title $VERSION
+    outputs:
+      version: ${{ env.VERSION }}
+    
+    build:
+      name: Build project
+      needs:
+        - create-release
+      runs-on: ${{ matrix.os }}
+      env:
+        CARGO: cargo
+      strategy:
+        matrix:
+          include:
+            - build: linux
+              os: ubuntu-latest
+              rust: nightly
+              target: x86_64-unknown-linux-musl
+              strip: x86_64-linux-musl-strip
+            - build: stable-x86
+              os: ubuntu-latest
+              rust: stable
+              target: i686-unknown-linux-gnu
+              strip: x86_64-linux-gnu-strip
+              qemu: i386
+            - build: stable-aarch64
+              os: ubuntu-latest
+              rust: stable
+              target: aarch64-unknown-linux-gnu
+              strip: aarch64-linux-gnu-strip
+              qemu: qemu-aarch64
+            - build: stable-arm-gnueabihf
+              os: ubuntu-latest
+              rust: stable
+              target: armv7-unknown-linux-gnueabihf
+              strip: arm-linux-gnueabihf-strip
+              qemu: qemu-arm
+            - build: stable-arm-musleabihf
+              os: ubuntu-latest
+              rust: stable
+              target: armv7-unknown-linux-musleabihf
+              strip: arm-linux-musleabihf-strip
+              qemu: qemu-arm
+            - build: stable-arm-musleabi
+              os: ubuntu-latest
+              rust: stable
+              target: armv7-unknown-linux-musleabi
+              strip: arm-linux-musleabi-strip
+              qemu: qemu-arm
+            - build: stable-powerpc64
+              os: ubuntu-latest
+              rust: stable
+              target: powerpc64-unknown-linux-gnu
+              strip: powerpc64-linux-gnu-strip
+              qemu: qemu-ppc64
+            - build: stable-s390x
+              os: ubuntu-latest
+              rust: stable
+              target: s390x-unknown-linux-gnu
+              strip: s390x-linux-gnu-strip
+              qemu: qemu-s390x
+            - build: macos
+              os: macos-latest
+              rust: nightly
+              target: x86_64-apple-darwin
+            - build: win-msvc
+              os: windows-latest
+              rust: nightly
+              target: x86_64-pc-windows-msvc
+            - build: win-gnu
+              os: windows-latest
+              rust: nightly-x86_64-gnu
+              target: x86_64-pc-windows-gnu
+            - build: win32-msvc
+              os: windows-latest
+              rust: nightly
+              target: i686-pc-windows-msvc
+  
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+  
+        - name: Install rust toolchain
+          uses: actions-rs/toolchain@v1
+          with:
+            toolchain: ${{ matrix.rust }}
+            target: ${{ matrix.target }}
+  
+        - name: Cargo and target cache
+          uses: actions/cache@v2
+          with:
+            path: |
+              ~/.cargo/registry
+              ~/.cargo/git
+              target
+            key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+  
+        - name: Use cross
+          if: matrix.os == 'ubuntu-latest' && matrix.target != ''
+          shell: bash
+          run: |
+            cargo install cross --git https://github.com/cross-rs/cross
+            echo "CARGO=cross" > $GITHUB_ENV
+  
+        - name: Compile the project
+          shell: bash
+          run: |
+            ${{ env.CARGO }}  build --release --target ${{ matrix.target }}
+            if [ "${{ matrix.os }}" = "windows-latest" ]; then
+              bin="target/${{ matrix.target }}/yarcon.exe"
+            else
+              bin="target/${{ matrix.target }}/yarcon"
+            fi
+            echo "BIN=$bin" >> $GITHUB_ENV
+  
+        - name: Set archive name
+          shell: bash
+          run: |
+            version=${{ needs.create-release.outputs.version }}
+            echo "ARCHIVE=yarcon-$version-${{ matrix.target }}" >> $GITHUB_ENV
+  
+        - name: Create directory for archive
+          run:
+            mkdir -p $ARCHIVE/doc
+            cp $BIN $ARCHIVE
+            cp {README.md,LICENSE} $ARCHIVE/doc
+  
+        - name: Build archive for Windows
+          shell: bash
+          if: matrix.os == 'windows-latest'
+          run: |
+            7z a "$ARCHIVE.zip" "$ARCHIVE"
+            certutil -hashfile "$ARCHIVE.zip" SHA256 > "$ARCHIVE.zip.sha256"
+            echo "ASSET=$ARCHIVE.zip" >> $GITHUB_ENV
+            echo "ASSET_SUM=$ARCHIVE.zip.sha256" >> $GITHUB_ENV
+  
+        - name: Build archive for Unix systems
+          shell: bash
+          if: matrix.os != 'windows-latest'
+          run: |
+            tar -czvf $ARCHIVE.tar.gz $ARCHIVE
+            shasum -a 256 $ARCHIVE.tar.gz SHA256 > $ARCHIVE.tar.gz.sha256
+            echo "ASSET=$ARCHIVE.tar.gz" >> $GITHUB_ENV
+            echo "ASSET_SUM=$ARCHIVE.tar.gz.sha256" >> $GITHUB_ENV
+  
+        - name: Upload release archive
+          shell: bash
+          run: |
+            version="${{ needs.create-release.outputs.version }}"
+            gh release upload "$version" ${{ env.ASSET }} ${{ env.ASSET_SUM }}
+  
