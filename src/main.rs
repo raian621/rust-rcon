@@ -2,7 +2,6 @@ pub mod rcon;
 pub mod repl;
 pub mod util;
 pub mod history;
-pub mod scroller;
 
 use std::{env, process::exit};
 
@@ -25,6 +24,6 @@ fn main() {
         config.password
     ).unwrap();
 
-    repl(client);
+    println!("{:?}", repl(client));
 }
 

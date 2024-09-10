@@ -51,6 +51,9 @@ impl std::fmt::Display for ClientError {
     }
 }
 
+// idk why this was necessary but whatever
+impl std::error::Error for ClientError {}
+
 #[derive(Debug)]
 pub struct NoConnectionError;
 
