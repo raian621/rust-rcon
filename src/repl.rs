@@ -48,7 +48,6 @@ pub fn execute(
     cmd: &str
 ) -> Result<Option<String>, Box<dyn Error>> {
     ts.history.push(cmd.to_string());
-    println!("`{:?}`", cmd.as_bytes());
     match cmd {
         "~history" => { 
             print_history(ts);
