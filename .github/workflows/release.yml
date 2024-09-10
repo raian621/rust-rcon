@@ -21,6 +21,7 @@ jobs:
         shell: bash
         run: |
           echo "version is $VERSION"
+          echo "ref name is ${{ github.ref_name }}"
           if ! grep -q "version = \"$VERSION\"" Cargo.toml; then
             echo "version does not match Cargo.toml" >&2
             exit 1
