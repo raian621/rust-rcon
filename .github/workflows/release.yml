@@ -14,14 +14,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Get yarcon version from repo environment variables
+        if: env.VERSION == ''
+        run: echo "VERSION=${{ var.VERSION }}" >> $GITHUB_ENV
       - name: Get yarcon version from git tag
         if: env.VERSION == ''
         run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
       - name: Check that tag version and Cargo.toml version are the same
         shell: bash
         run: |
-          echo "version is $VERSION"
-          echo "ref name is ${{ github.ref_name }}"
           if ! grep -q "version = \"$VERSION\"" Cargo.toml; then
             echo "version does not match Cargo.toml" >&2
             exit 1
