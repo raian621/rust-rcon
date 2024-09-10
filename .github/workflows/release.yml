@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Get yarcon version from repo environment variables
         if: env.VERSION == ''
-        run: echo "VERSION=${{ var.VERSION }}" >> $GITHUB_ENV
+        run: echo "VERSION=${{ vars.VERSION }}" >> $GITHUB_ENV
       - name: Get yarcon version from git tag
         if: env.VERSION == ''
         run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
