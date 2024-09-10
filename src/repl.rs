@@ -24,12 +24,12 @@ pub fn repl(mut client: Client) -> Result<(), Box<dyn Error>>{
     let mut input = String::new();
     let mut ts = TerminalState::new();
 
-    while input.as_str() != "q\n" {
+    while input.trim_end() != "q" {
         input.clear();
         print!("{}", PROMPT);
         stdout().flush()?;
         stdin().read_line(&mut input)?;
-        match execute(&mut client, &mut ts, &input[0..(input.len()-1)]) {
+        match execute(&mut client, &mut ts, &input.trim_end()) {
             Err(why) => println!("{}", why),
             Ok(response) => {
                 if let Some(response) = response {
@@ -48,6 +48,7 @@ pub fn execute(
     cmd: &str
 ) -> Result<Option<String>, Box<dyn Error>> {
     ts.history.push(cmd.to_string());
+    println!("`{:?}`", cmd.as_bytes());
     match cmd {
         "~history" => { 
             print_history(ts);
