@@ -29,7 +29,7 @@ pub fn repl(mut client: Client) -> Result<(), Box<dyn Error>>{
         print!("{}", PROMPT);
         stdout().flush()?;
         stdin().read_line(&mut input)?;
-        match execute(&mut client, &mut ts, &input.trim_end()) {
+        match execute(&mut client, &mut ts, input.trim_end()) {
             Err(why) => println!("{}", why),
             Ok(response) => {
                 if let Some(response) = response {

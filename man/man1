@@ -1,15 +1,21 @@
 .TH NAME yarcon 1 "3 September 2024" "version 0.0.1"
 yarcon - Yet another RCON client, written in Rust btw.
 .SH SYNOPSIS
-yarcon [-p PASSWORD] [-h HOST_NAME] [-P HOST_PORT]
+yarcon [-H|--hostname HOST_NAME] [-p|--password PASSWORD] [-P|--port HOST_PORT]
 .SH DESCRIPTION
 RCON client used to interface with RCON-enabled game servers.
 .SH OPTIONS
-.IP -p HOST_PORT
-Specifies the port used for RCON. This option must be given if the RCON_HOST_PORT environment variable isn't set.
-.IP -h HOST_NAME
+.IP -a|--adhoc
+Run an RCON command ad-hoc e.g. without entering the yarcon shell.
+.IP -h|--help
+Prints out command line options out to the standard output.
+.IP -H|--hostname HOST_NAME
 Specifies the game server's host name. This option must be given if the RCON_HOST_NAME environment variable isn't set.
-.IP -P PASSWORD
+.IP -p PASSWORD
 Specifies the password used to authenticate using RCON. This option must be given if the RCON_PASSWORD environment variable isn't set.
+.IP -P HOST_PORT
+Specifies the port used for RCON. This option must be given if the RCON_HOST_PORT environment variable isn't set.
+.IP -v|--version
+Prints the yarcon version out to the standard output.
 .SH AUTHOR
 Ryan Bell, ryan.bell62101@gmail.com
